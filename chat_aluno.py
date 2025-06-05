@@ -1,5 +1,6 @@
 # ==== 4. chat_aluno.py ====
 
+import os
 import gradio as gr
 from gerar_resposta import gerar_resposta
 from base_consulta import consultar_vetorial
@@ -23,8 +24,22 @@ def interagir(pergunta):
 
 def salvar_historico():
     import json
-    with open("interacoes.json", "w", encoding="utf-8") as f:
-        json.dump(historico, f, ensure_ascii=False, indent=2)
+    pasta = "historico"
+    os.makedirs(pasta, exist_ok=True)
+    caminho = os.path.join(pasta, "interacoes.json")
+
+    historico_existente = []
+    if os.path.exists(caminho):
+        try:
+            with open(caminho, "r", encoding="utf-8") as f:
+                historico_existente = json.load(f)
+        except json.JSONDecodeError:
+            historico_existente = []
+
+    historico_existente.extend(historico)
+
+    with open(caminho, "w", encoding="utf-8") as f:
+        json.dump(historico_existente, f, ensure_ascii=False, indent=2)
     return "Histórico salvo com sucesso!"
 
 with gr.Blocks() as demo:
