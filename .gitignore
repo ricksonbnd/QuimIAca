@@ -43,5 +43,7 @@ prints/
 
 # Ignore local config files
 *.env
-
 .gradio/flagged
+
+#interações e historico
+interacoes.json
