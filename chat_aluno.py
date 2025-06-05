@@ -34,7 +34,8 @@ with gr.Blocks() as demo:
         botao = gr.Button("Perguntar")
     resposta = gr.Textbox(label="Resposta da IA", lines=6)
     trechos_usados = gr.Textbox(label="Trechos do material usados", lines=6)
+    status = gr.Textbox(label="Status", value="", interactive=False)
     botao.click(fn=interagir, inputs=pergunta, outputs=[resposta, trechos_usados])
-    gr.Button("Salvar histórico").click(fn=salvar_historico, outputs=gr.Textbox(value=""))
+    gr.Button("Salvar histórico").click(fn=salvar_historico, outputs=status)
 
 demo.launch()
