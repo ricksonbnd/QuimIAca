@@ -15,9 +15,9 @@ model = SentenceTransformer("all-MiniLM-L6-v2")
 
 def extrair_texto_pdf(caminho_pdf):
     texto = ""
-    doc = fitz.open(caminho_pdf)
-    for pagina in doc:
-        texto += pagina.get_text()
+    with fitz.open(caminho_pdf) as doc:
+        for pagina in doc:
+            texto += pagina.get_text()
     return texto
 
 def dividir_em_chunks(texto, tamanho=50):
