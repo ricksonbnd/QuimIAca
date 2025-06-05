@@ -36,7 +36,13 @@ venv/
 .DS_Store
 
 # Dados file
-/dados
+dados/aulas_originais/*
+dados/chunks/*
+dados/faiss_index/*
+
+!dados/aulas_originais/.gitkeep
+!dados/chunks/.gitkeep
+!dados/faiss_index/.gitkeep
 
 # Prints
 prints/
