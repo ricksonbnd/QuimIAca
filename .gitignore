@@ -1,0 +1,47 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+core/__pycache__
+*.py[cod]
+*$py.class
+*.pyc
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# PyTorch / TensorFlow / AI stuff
+*.pt
+*.pth
+*.ckpt
+*.bin
+*.model
+*.onnx
+
+# Cache files
+*.cache/
+.cache/
+
+# Logs and databases
+*.log
+*.sqlite3
+
+# VSCode settings folder
+.vscode/
+
+# MacOS system files
+.DS_Store
+
+# Dados file
+dados/
+
+# Prints
+prints/
+
+# Ignore local config files
+*.env
+
+.gradio/flagged
