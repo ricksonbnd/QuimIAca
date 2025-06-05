@@ -46,4 +46,6 @@ prints/
 .gradio/flagged
 
 #interações e historico
+historico/*
+!historico/.gitkeep
 interacoes.json
