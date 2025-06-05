@@ -36,7 +36,7 @@ venv/
 .DS_Store
 
 # Dados file
-dados/
+/dados
 
 # Prints
 prints/
