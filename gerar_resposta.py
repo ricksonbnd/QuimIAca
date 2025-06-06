@@ -42,4 +42,6 @@ def gerar_resposta(pergunta, modelo="lmstudio", k=3):
         }
     )
 
+    resposta.raise_for_status()
+
     return resposta.json()["choices"][0]["message"]["content"].strip()
