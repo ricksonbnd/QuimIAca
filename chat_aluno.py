@@ -5,7 +5,7 @@ import shutil
 import gradio as gr
 from gerar_resposta import gerar_resposta
 from base_consulta import consultar_vetorial
-from processar_aulas import processar_todos
+from processar_aulas import processar_todos, resetar_base
 
 PASTA_DESTINO = "dados/aulas_originais"
 
@@ -63,6 +63,11 @@ def salvar_arquivos(pdfs):
     return f"✅ {len(nomes_salvos)} arquivo(s) salvo(s) em `{PASTA_DESTINO}`:\n\n" + "\n".join(nomes_salvos)
 
 
+def resetar_dados():
+    resetar_base()
+    return "✅ Base de dados resetada!"
+
+
 
 
 with gr.Blocks() as demo:
@@ -75,6 +80,7 @@ with gr.Blocks() as demo:
     status = gr.Textbox(label="Status", value="", interactive=False)
     botao.click(fn=interagir, inputs=pergunta, outputs=[resposta, trechos_usados])
     gr.Button("Salvar histórico").click(fn=salvar_historico, outputs=status)
+    gr.Button("Resetar base").click(fn=resetar_dados, outputs=status)
 
     ## função upar arquivos
     gr.Markdown("## 📘 Envie os PDFs para Análise")

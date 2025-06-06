@@ -31,6 +31,8 @@ python chat_aluno.py
 
 A página do Gradio permite enviar uma pergunta. O script usa `gerar_resposta.py` para chamar um servidor compatível com a API OpenAI (ex.: LM Studio) que deve estar rodando em `http://localhost:1234`.
 
+Também há um botão "Resetar base" para apagar os arquivos processados e recomeçar do zero.
+
 ## Scripts auxiliares
 
 - **base_consulta.py** – realiza a busca vetorial nos chunks usando FAISS.
