@@ -1,9 +1,15 @@
 # ==== 4. chat_aluno.py ====
 
 import os
+import shutil
 import gradio as gr
 from gerar_resposta import gerar_resposta
 from base_consulta import consultar_vetorial
+from processar_aulas import processar_todos
+
+PASTA_DESTINO = "dados/aulas_originais"
+
+os.makedirs(PASTA_DESTINO, exist_ok=True)
 
 historico = []
 
@@ -11,6 +17,7 @@ def interagir(pergunta):
     resposta = gerar_resposta(pergunta)
     consulta = consultar_vetorial(pergunta)
     trechos = consulta["trechos"]
+    origens = consulta["origens"]
 
     interacao = {
         "pergunta": pergunta,
@@ -19,8 +26,12 @@ def interagir(pergunta):
     }
     historico.append(interacao)
 
-    trecho_formatado = "\n".join([f"\u2022 {t[:150]}..." for t in trechos])
+    trecho_formatado = "\n\n".join([
+        f"\u2022 {t[:100]}... 📁 Origem: `{o[:50]}`"
+        for t, o in zip(trechos, origens)
+    ])
     return resposta, trecho_formatado
+
 
 def salvar_historico():
     import json
@@ -42,6 +53,18 @@ def salvar_historico():
         json.dump(historico_existente, f, ensure_ascii=False, indent=2)
     return "Histórico salvo com sucesso!"
 
+def salvar_arquivos(pdfs):
+    nomes_salvos = []
+    for pdf in pdfs:
+        destino = os.path.join(PASTA_DESTINO, os.path.basename(pdf.name))
+        shutil.copy(pdf.name, destino)
+        nomes_salvos.append(destino)
+    processar_todos()
+    return f"✅ {len(nomes_salvos)} arquivo(s) salvo(s) em `{PASTA_DESTINO}`:\n\n" + "\n".join(nomes_salvos)
+
+
+
+
 with gr.Blocks() as demo:
     gr.Markdown("Colega Virtual de Química\nConverse com a IA para tirar dúvidas, mas ela não vai te dar a resposta pronta 😉")
     with gr.Row():
@@ -52,5 +75,12 @@ with gr.Blocks() as demo:
     status = gr.Textbox(label="Status", value="", interactive=False)
     botao.click(fn=interagir, inputs=pergunta, outputs=[resposta, trechos_usados])
     gr.Button("Salvar histórico").click(fn=salvar_historico, outputs=status)
+
+    ## função upar arquivos
+    gr.Markdown("## 📘 Envie os PDFs para Análise")
+    arquivos = gr.File(file_types=[".pdf",".txt"], file_count="multiple", label="PDFs e Textos")
+    botao = gr.Button("Salvas Arquivos e Processar")
+    saida = gr.Markdown()
+    botao.click(fn=salvar_arquivos, inputs=arquivos, outputs=saida)
 
 demo.launch()

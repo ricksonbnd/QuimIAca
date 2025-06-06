@@ -20,6 +20,7 @@ Com base nesse conteúdo, NUNCA diga algo que contraria a ideia do professor, aj
 Lembre-se:
 - Incentive o aluno a pensar.
 - Use exemplos simples.
+- Foque no que foi dito pelo professor, e se baseie em dar exemplos que o professor deu.
 """.strip()
 
 
