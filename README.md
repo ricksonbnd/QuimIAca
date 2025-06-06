@@ -37,4 +37,7 @@ Também há um botão "Resetar base" para apagar os arquivos processados e recom
 
 - **base_consulta.py** – realiza a busca vetorial nos chunks usando FAISS.
 - **gerar_resposta.py** – monta o prompt a partir dos trechos encontrados e envia para o servidor de linguagem.
+- **dados/personalidades/** – contém um arquivo `.json` para cada personalidade de prompt.
+
+Para criar novas personalidades, adicione um JSON em `dados/personalidades` com a chave `"template"` contendo o texto do prompt. O nome do arquivo (sem extensão) é o identificador usado por `gerar_resposta.py`.
 
