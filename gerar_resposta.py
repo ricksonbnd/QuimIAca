@@ -30,7 +30,7 @@ def montar_prompt(trechos, pergunta, personalidade: str = "colega_quimica") -> s
     return template.format(contexto=contexto, pergunta=pergunta).strip()
 
 
-def gerar_resposta(pergunta, modelo="lmstudio", k=3, personalidade: str = "colega_quimica"):
+def gerar_resposta(pergunta, modelo="lmstudio", k=3, personalidade: str = "colega_quimica", historico=None):
     consulta = consultar_vetorial(pergunta, k=k)
     prompt = montar_prompt(consulta["trechos"], pergunta, personalidade)
 
@@ -39,10 +39,11 @@ def gerar_resposta(pergunta, modelo="lmstudio", k=3, personalidade: str = "coleg
         headers={"Content-Type": "application/json"},
         json={
             "model": "local-model",  # Isso pode ser qualquer nome, LM Studio ignora
-            "messages": [
-                {"role": "system", "content": "Você é uma IA educacional que ajuda o aluno a refletir. E responde as duvidas e da formulas quando pedido."},
-                {"role": "user", "content": prompt}
-            ],
+            "messages": (
+                [{"role": "system", "content": "Você é uma IA educacional que ajuda o aluno a refletir. E responde as duvidas e da formulas quando pedido."}]
+                + (historico or [])
+                + [{"role": "user", "content": prompt}]
+            ),
             "temperature": 0.7,
             "top_p": 0.9
         }
