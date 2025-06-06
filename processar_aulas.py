@@ -16,6 +16,7 @@ PASTA_CHUNKS  = "dados/chunks"
 PASTA_FAISS   = "dados/faiss_index"
 JSON_CHUNKS   = os.path.join(PASTA_CHUNKS, "base_chunks.json")
 INDEX_FAISS   = os.path.join(PASTA_FAISS,  "index.bin")
+META_FAISS    = os.path.join(PASTA_FAISS,  "meta.json")
 
 # Modelo de embedding
 model = SentenceTransformer("all-MiniLM-L6-v2")  # dimensão típica = 384
@@ -96,6 +97,9 @@ def carregar_ou_criar_indice(dim: int):
         with open(JSON_CHUNKS, "r", encoding="utf-8") as f:
             base_chunks = json.load(f)
         index = faiss.read_index(INDEX_FAISS)
+        if not os.path.exists(META_FAISS):
+            with open(META_FAISS, "w", encoding="utf-8") as f:
+                json.dump({"full_trained": False}, f)
     else:
         # Cria do zero
         base_chunks = []
@@ -109,16 +113,26 @@ def carregar_ou_criar_indice(dim: int):
         # Inicializa JSON vazio
         with open(JSON_CHUNKS, "w", encoding="utf-8") as f:
             json.dump(base_chunks, f, ensure_ascii=False, indent=2)
+        # Cria metadata inicial
+        with open(META_FAISS, "w", encoding="utf-8") as f:
+            json.dump({"full_trained": False}, f)
 
     return base_chunks, index
 
 
 def precisa_treinar_de_verdade(total_chunks: int) -> bool:
     """
-    Retorna True se já houver pelo menos 1000 chunks (podemos então
-    treinar o índice com embeddings reais, em vez de placeholder).
+    Retorna True apenas quando já houver pelo menos 1000 chunks e o
+    índice ainda **não** tiver sido treinado com embeddings reais.
     """
-    return total_chunks >= 1000
+    meta = {"full_trained": False}
+    if os.path.exists(META_FAISS):
+        try:
+            with open(META_FAISS, "r", encoding="utf-8") as f:
+                meta = json.load(f)
+        except json.JSONDecodeError:
+            meta = {"full_trained": False}
+    return total_chunks >= 1000 and not meta.get("full_trained", False)
 
 
 def re_treinar_indice_com_chunks_reais(base_chunks: list[dict], index: faiss.IndexIVFFlat):
@@ -142,6 +156,8 @@ def re_treinar_indice_com_chunks_reais(base_chunks: list[dict], index: faiss.Ind
     new_index.add(embeddings)
 
     faiss.write_index(new_index, INDEX_FAISS)
+    with open(META_FAISS, "w", encoding="utf-8") as f:
+        json.dump({"full_trained": True}, f)
     print("✅ Índice re-treinado com embeddings reais.")
     return new_index
 
@@ -162,6 +178,8 @@ def limpar_indice() -> None:
         print("🗑️  index.bin removido.")
     else:
         print("ℹ️  Nenhum index.bin para remover.")
+    if os.path.exists(META_FAISS):
+        os.remove(META_FAISS)
 
 
 def limpar_aulas() -> None:
