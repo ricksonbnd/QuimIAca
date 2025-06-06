@@ -1,94 +1,243 @@
-# ==== 1. processar_aulas.py ====
+# processar_aulas.py
 
 import os
 import json
-import fitz  # PyMuPDF
+import fitz  # PyMuPDF para leitura de PDFs
+import numpy as np
 from sentence_transformers import SentenceTransformer
 import faiss
-import numpy as np
+import nltk
+from nltk.tokenize import sent_tokenize
 
-PASTA_AULAS = "dados/aulas_originais"
-PASTA_CHUNKS = "dados/chunks"
-PASTA_FAISS = "dados/faiss_index"
+# Diretórios de entrada e saída
+PASTA_AULAS   = "dados/aulas_originais"
+PASTA_CHUNKS  = "dados/chunks"
+PASTA_FAISS   = "dados/faiss_index"
+JSON_CHUNKS   = os.path.join(PASTA_CHUNKS, "base_chunks.json")
+INDEX_FAISS   = os.path.join(PASTA_FAISS,  "index.bin")
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
+# Modelo de embedding
+model = SentenceTransformer("all-MiniLM-L6-v2")  # dimensão típica = 384
 
-def extrair_texto_pdf(caminho_pdf):
+# 1) Certificar que 'punkt' está disponível
+try:
+    nltk.data.find("tokenizers/punkt")
+except LookupError:
+    nltk.download("punkt")
+
+def extrair_texto_pdf(caminho_pdf: str) -> str:
+    """
+    Abre um PDF e retorna todo o texto concatenado.
+    """
     texto = ""
     with fitz.open(caminho_pdf) as doc:
         for pagina in doc:
             texto += pagina.get_text()
     return texto
 
-def dividir_em_chunks(texto, tamanho=50):
-    palavras = texto.split()
+
+def dividir_em_chunks_por_sentenca(texto: str, max_tokens: int = 100) -> list[str]:
+    """
+    Divide o texto em chunks de até ~max_tokens tokens, agrupando sentenças inteiras.
+    Usa o tokenizador de sentenças do NLTK (punkt).
+    """
+    try:
+        sentencas = sent_tokenize(texto, language="portuguese")
+    except LookupError:
+        # Caso não tenha o modelo “portuguese”, tenta inglês
+        sentencas = sent_tokenize(texto, language="english")
+        
     chunks = []
-    for i in range(0, len(palavras), tamanho):
-        trecho = " ".join(palavras[i:i+tamanho])
-        if len(trecho.strip()) > 0:
-            chunks.append(trecho)
+    buffer = []
+    count = 0
+
+    for s in sentencas:
+        # Conta tokens da sentença usando o tokenizer interno do SentenceTransformer
+        tam = len(model.tokenizer.tokenize(s))
+        if count + tam <= max_tokens:
+            buffer.append(s)
+            count += tam
+        else:
+            if buffer:
+                chunks.append(" ".join(buffer))
+            buffer = [s]
+            count = tam
+
+    if buffer:
+        chunks.append(" ".join(buffer))
+
     return chunks
 
+
+def contar_chunks_existentes() -> int:
+    """
+    Retorna quantos chunks já estão gravados em base_chunks.json.
+    Se o arquivo não existir, retorna 0.
+    """
+    if not os.path.exists(JSON_CHUNKS):
+        return 0
+    with open(JSON_CHUNKS, "r", encoding="utf-8") as f:
+        base_chunks = json.load(f)
+    return len(base_chunks)
+
+
+def carregar_ou_criar_indice(dim: int):
+    """
+    Se já existir um índice FAISS em INDEX_FAISS e o JSON de chunks,
+    carrega ambos. Caso contrário, cria um índice IndexIVFFlat vazio,
+    treina com vetores aleatórios (placeholder) e salva.
+    """
+    os.makedirs(PASTA_CHUNKS, exist_ok=True)
+    os.makedirs(PASTA_FAISS,  exist_ok=True)
+
+    if os.path.exists(INDEX_FAISS) and os.path.exists(JSON_CHUNKS):
+        # Carrega lista de chunks e índice existente
+        with open(JSON_CHUNKS, "r", encoding="utf-8") as f:
+            base_chunks = json.load(f)
+        index = faiss.read_index(INDEX_FAISS)
+    else:
+        # Cria do zero
+        base_chunks = []
+        nlist = 100  # Número de clusters para IVF (ajuste conforme volume esperado)
+        quantizer = faiss.IndexFlatL2(dim)
+        index = faiss.IndexIVFFlat(quantizer, dim, nlist, faiss.METRIC_L2)
+        # Treinar com vetores aleatórios como placeholder (1000 vetores aleatórios)
+        placeholder = np.random.rand(1000, dim).astype("float32")
+        index.train(placeholder)
+        faiss.write_index(index, INDEX_FAISS)
+        # Inicializa JSON vazio
+        with open(JSON_CHUNKS, "w", encoding="utf-8") as f:
+            json.dump(base_chunks, f, ensure_ascii=False, indent=2)
+
+    return base_chunks, index
+
+
+def precisa_treinar_de_verdade(total_chunks: int) -> bool:
+    """
+    Retorna True se já houver pelo menos 1000 chunks (podemos então
+    treinar o índice com embeddings reais, em vez de placeholder).
+    """
+    return total_chunks >= 1000
+
+
+def re_treinar_indice_com_chunks_reais(base_chunks: list[dict], index: faiss.IndexIVFFlat):
+    """
+    Recria o índice FAISS do zero usando embeddings reais de todos os chunks.
+    1) Gera embeddings em batch para cada chunk em base_chunks.
+    2) Cria um novo IndexIVFFlat e chama train() com esses embeddings.
+    3) Adiciona todos os embeddings ao novo índice e persiste.
+    """
+    textos = [c["texto"] for c in base_chunks]
+    print(f"🔄 Gerando embeddings reais para {len(textos)} chunks...")
+    embeddings = model.encode(textos, batch_size=32, convert_to_numpy=True).astype("float32")
+
+    dim = embeddings.shape[1]
+    nlist = int(np.sqrt(len(embeddings))) or 1
+    quantizer = faiss.IndexFlatL2(dim)
+    new_index = faiss.IndexIVFFlat(quantizer, dim, nlist, faiss.METRIC_L2)
+
+    print(f"🔄 Treinando novo índice IVF com {len(embeddings)} vetores (nlist={nlist})...")
+    new_index.train(embeddings)
+    new_index.add(embeddings)
+
+    faiss.write_index(new_index, INDEX_FAISS)
+    print("✅ Índice re-treinado com embeddings reais.")
+    return new_index
+
+
 def processar_todos():
-    print("🚀 Função processar_todos foi chamada")
-    todos_chunks = []
-    vetores = []
-
-    print("🔍 Iniciando processamento dos arquivos em:", PASTA_AULAS)
-
+    """
+    Fluxo principal:
+    1) Carrega (ou cria) índice FAISS e base_chunks.
+    2) Verifica novos arquivos em PASTA_AULAS que ainda não foram processados.
+    3) Gera chunks (por sentença) para cada novo arquivo.
+    4) Faz batch encode desses novos chunks e adiciona incrementalmente ao índice.
+    5) Grava JSON atualizado de base_chunks e o índice FAISS.
+    6) Se total_chunks >= 1000, re-treina o índice com embeddings reais de todos os chunks.
+    """
     arquivos = os.listdir(PASTA_AULAS)
     if not arquivos:
-        print("⚠️ Nenhum arquivo encontrado na pasta de aulas.")
+        print("⚠️ Nenhum arquivo encontrado em dados/aulas_originais.")
         return
 
+    # Exemplo de dimensão de embedding (all-MiniLM-L6-v2 → 384)
+    dim_example = 384
+
+    # 1) Carregar ou criar índice e lista de chunks
+    base_chunks, index = carregar_ou_criar_indice(dim_example)
+
+    novos_chunks = []
     for nome_arquivo in arquivos:
         caminho = os.path.join(PASTA_AULAS, nome_arquivo)
 
-        if nome_arquivo.endswith(".pdf"):
+        # Só processa PDF ou TXT
+        if not nome_arquivo.lower().endswith((".pdf", ".txt")):
+            continue
+
+        # Pula arquivo se já estiver em base_chunks (campo "origem")
+        if any(c["origem"] == nome_arquivo for c in base_chunks):
+            continue
+
+        # 2) Extrair texto
+        if nome_arquivo.lower().endswith(".pdf"):
             texto = extrair_texto_pdf(caminho)
-        elif nome_arquivo.endswith(".txt"):
+        else:
             with open(caminho, "r", encoding="utf-8") as f:
                 texto = f.read()
-        else:
-            print(f"⏭️ Ignorando arquivo não suportado: {nome_arquivo}")
-            continue
 
         if not texto.strip():
             print(f"⚠️ Arquivo vazio: {nome_arquivo}")
             continue
 
-        print(f"📄 Processando: {nome_arquivo}")
-        chunks = dividir_em_chunks(texto, tamanho=50)
-        print(f"  ➕ {len(chunks)} chunks gerados")
+        # 3) Dividir em chunks por sentença
+        chunks_do_arquivo = dividir_em_chunks_por_sentenca(texto, max_tokens=100)
+        print(f"📄 {nome_arquivo} → {len(chunks_do_arquivo)} chunks")
 
-        for i, chunk in enumerate(chunks):
-            todos_chunks.append({
-                "id": f"{nome_arquivo}_{i}",
-                "texto": chunk,
+        for i, chunk in enumerate(chunks_do_arquivo):
+            novos_chunks.append({
+                "id":     f"{nome_arquivo}_{i}",
+                "texto":  chunk,
                 "origem": nome_arquivo,
-                "ordem": i
+                "ordem":  i
+                # Deixamos embedding vazio; será gerado em batch
             })
-            vetor = model.encode(chunk)
-            vetores.append(vetor)
 
-    if not vetores:
-        print("❌ Nenhum vetor gerado. Verifique se os arquivos têm conteúdo suficiente.")
+    if not novos_chunks:
+        print("✅ Não há novos chunks para adicionar.")
         return
 
-    os.makedirs(PASTA_CHUNKS, exist_ok=True)
-    os.makedirs(PASTA_FAISS, exist_ok=True)
+    # 4) Em batch, gerar embeddings para todos os novos chunks
+    textos = [c["texto"] for c in novos_chunks]
+    print(f"🔍 Gerando embeddings para {len(textos)} novos chunks...")
+    embeddings = model.encode(textos, batch_size=32, convert_to_numpy=True).astype("float32")
 
-    with open(os.path.join(PASTA_CHUNKS, "base_chunks.json"), "w", encoding="utf-8") as f:
-        json.dump(todos_chunks, f, indent=2, ensure_ascii=False)
+    # 5) Adicionar incrementalmente ao índice FAISS e atribuir faiss_id
+    for idx, chunk_meta in enumerate(novos_chunks):
+        faiss_id = index.ntotal  # índice disponível antes de inserir
+        chunk_meta["faiss_id"] = faiss_id
+        index.add(embeddings[idx:idx+1])
 
-    dim = len(vetores[0])
-    index = faiss.IndexFlatL2(dim)
-    index.add(np.array(vetores))
-    faiss.write_index(index, os.path.join(PASTA_FAISS, "index.bin"))
+    # 6) Atualizar JSON de chunks e persistir o índice
+    base_chunks.extend(novos_chunks)
+    with open(JSON_CHUNKS, "w", encoding="utf-8") as f:
+        json.dump(base_chunks, f, ensure_ascii=False, indent=2)
 
-    print(f"✅ Processamento completo: {len(todos_chunks)} chunks gerados.")
+    faiss.write_index(index, INDEX_FAISS)
+    total_chunks = len(base_chunks)
+    print(f"✅ Adicionados {len(novos_chunks)} novos chunks. Total atual: {total_chunks} chunks.")
+
+    # 7) Caso atinja 1000 ou mais, re-treinar com embeddings reais
+    if precisa_treinar_de_verdade(total_chunks):
+        # Recarrega JSON atualizado e re-treina
+        with open(JSON_CHUNKS, "r", encoding="utf-8") as f:
+            base_atualizado = json.load(f)
+        index = re_treinar_indice_com_chunks_reais(base_atualizado, index)
+    else:
+        faltam = 1000 - total_chunks
+        print(f"ℹ️ Ainda faltam {faltam} chunks para treinar com embeddings reais.")
+
+    print("🚀 Processamento concluído.")
+
 
 if __name__ == "__main__":
     processar_todos()
-
-    

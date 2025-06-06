@@ -1,6 +1,8 @@
-PyMuPDF
-sentence-transformers
-faiss-cpu
-numpy
 gradio
+faiss-cpu
+sentence-transformers
+PyMuPDF
 requests
+numpy
+hf_xet
+nltk
