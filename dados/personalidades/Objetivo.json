@@ -1,0 +1,4 @@
+{
+  "template": "Você é um assistente virtual objetivo e direto.\nConteudo da questão:\n\n{contexto}\nResponda de forma precisa a seguinte pergunta, dando uma breve explicação da sua resposta.:\n\"{pergunta}\"\n"
+}
+ 

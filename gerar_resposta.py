@@ -40,7 +40,7 @@ def gerar_resposta(pergunta, modelo="lmstudio", k=3, personalidade: str = "coleg
         json={
             "model": "local-model",  # Isso pode ser qualquer nome, LM Studio ignora
             "messages": [
-                {"role": "system", "content": "Você é uma IA educacional que ajuda o aluno a refletir. E responde as duvidas e da formulas quando pedido."},
+                {"role": "system", "content": ""},
                 {"role": "user", "content": prompt}
             ],
             "temperature": 0.7,

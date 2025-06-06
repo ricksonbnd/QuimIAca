@@ -110,7 +110,7 @@ with gr.Blocks() as demo:
         outputs=[resposta, trechos_usados],
     )
 
-    pergunta.submit(fn=interagir, inputs=[pergunta, personalidade], outputs=[resposta, trechos_usados])
+    pergunta.submit(fn=interagir, inputs=[pergunta, personalidade, mostrar_trechos], outputs=[resposta, trechos_usados])
     gr.Button("Salvar histórico").click(fn=salvar_historico, outputs=status)
     gr.Button("Resetar base").click(fn=resetar_dados, outputs=status)
 
