@@ -39,6 +39,10 @@ Também é possível pressionar **Enter** no campo de pergunta para enviar a men
 
 Também há um botão "Resetar base" para apagar os arquivos processados e recomeçar do zero.
 
+Por padrão, os trechos do material usados na resposta ficam ocultos. O
+controle **Trechos** permite exibi‑los ou escondê‑los a qualquer momento, e a
+escolha é respeitada sempre que uma nova resposta é gerada.
+
 ## Scripts auxiliares
 
 - **base_consulta.py** – realiza a busca vetorial nos chunks usando FAISS.
