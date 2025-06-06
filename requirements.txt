@@ -4,6 +4,5 @@ sentence-transformers
 PyMuPDF
 requests
 numpy
-hf_xet
+huggingface-hub
 nltk
-tab-punkt
