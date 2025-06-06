@@ -79,7 +79,7 @@ with gr.Blocks() as demo:
     ## função upar arquivos
     gr.Markdown("## 📘 Envie os PDFs para Análise")
     arquivos = gr.File(file_types=[".pdf",".txt"], file_count="multiple", label="PDFs e Textos")
-    botao = gr.Button("Salvas Arquivos e Processar")
+    botao = gr.Button("Salvar Arquivos e Processar")
     saida = gr.Markdown()
     botao.click(fn=salvar_arquivos, inputs=arquivos, outputs=saida)
 
