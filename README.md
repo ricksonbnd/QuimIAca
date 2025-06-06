@@ -21,6 +21,8 @@ python processar_aulas.py
 
 Esse comando extrai o texto dos PDFs/TXT, cria *chunks* de sentenças, gera os embeddings com `sentence-transformers` e monta o índice FAISS em `dados/faiss_index/`.
 
+Enquanto menos de 1000 chunks estiverem disponíveis o índice usa vetores aleatórios como placeholder. Quando o total chega a 1000, o script re-treina automaticamente o índice com os embeddings reais e registra essa informação em `dados/faiss_index/meta.json` (campo `full_trained`). O comando de *reset* remove também esse arquivo de metadata.
+
 ## Chat com o aluno
 
 Para abrir a interface web do assistente, execute:
