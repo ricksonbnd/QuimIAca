@@ -122,7 +122,7 @@ def carregar_ou_criar_indice(dim: int):
 
 def precisa_treinar_de_verdade(total_chunks: int) -> bool:
     """
-    Retorna True apenas quando já houver pelo menos 1000 chunks e o
+    Retorna True apenas quando já houver pelo menos 1287 chunks e o
     índice ainda **não** tiver sido treinado com embeddings reais.
     """
     meta = {"full_trained": False}
@@ -132,7 +132,7 @@ def precisa_treinar_de_verdade(total_chunks: int) -> bool:
                 meta = json.load(f)
         except json.JSONDecodeError:
             meta = {"full_trained": False}
-    return total_chunks >= 1000 and not meta.get("full_trained", False)
+    return total_chunks >= 1287 and not meta.get("full_trained", False)
 
 
 def re_treinar_indice_com_chunks_reais(base_chunks: list[dict], index: faiss.IndexIVFFlat):
@@ -211,7 +211,7 @@ def processar_todos():
     3) Gera chunks (por sentença) para cada novo arquivo.
     4) Faz batch encode desses novos chunks e adiciona incrementalmente ao índice.
     5) Grava JSON atualizado de base_chunks e o índice FAISS.
-    6) Se total_chunks >= 1000, re-treina o índice com embeddings reais de todos os chunks.
+    6) Se total_chunks >= 1287, re-treina o índice com embeddings reais de todos os chunks.
     """
     arquivos = os.listdir(PASTA_AULAS)
     if not arquivos:
@@ -284,14 +284,14 @@ def processar_todos():
     total_chunks = len(base_chunks)
     print(f"✅ Adicionados {len(novos_chunks)} novos chunks. Total atual: {total_chunks} chunks.")
 
-    # 7) Caso atinja 1000 ou mais, re-treinar com embeddings reais
+    # 7) Caso atinja 1287 ou mais, re-treinar com embeddings reais
     if precisa_treinar_de_verdade(total_chunks):
         # Recarrega JSON atualizado e re-treina
         with open(JSON_CHUNKS, "r", encoding="utf-8") as f:
             base_atualizado = json.load(f)
         index = re_treinar_indice_com_chunks_reais(base_atualizado, index)
     else:
-        faltam = 1000 - total_chunks
+        faltam = 1287 - total_chunks
         print(f"ℹ️ Ainda faltam {faltam} chunks para treinar com embeddings reais.")
 
     print("🚀 Processamento concluído.")
