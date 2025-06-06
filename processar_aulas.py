@@ -8,6 +8,7 @@ from sentence_transformers import SentenceTransformer
 import faiss
 import nltk
 from nltk.tokenize import sent_tokenize
+import argparse
 
 # Diretórios de entrada e saída
 PASTA_AULAS   = "dados/aulas_originais"
@@ -145,6 +146,45 @@ def re_treinar_indice_com_chunks_reais(base_chunks: list[dict], index: faiss.Ind
     return new_index
 
 
+def limpar_chunks() -> None:
+    """Remove o arquivo JSON que armazena todos os chunks."""
+    if os.path.exists(JSON_CHUNKS):
+        os.remove(JSON_CHUNKS)
+        print("🗑️  base_chunks.json removido.")
+    else:
+        print("ℹ️  Nenhum base_chunks.json para remover.")
+
+
+def limpar_indice() -> None:
+    """Remove o índice FAISS armazenado em disco."""
+    if os.path.exists(INDEX_FAISS):
+        os.remove(INDEX_FAISS)
+        print("🗑️  index.bin removido.")
+    else:
+        print("ℹ️  Nenhum index.bin para remover.")
+
+
+def limpar_aulas() -> None:
+    """Apaga arquivos de aulas já enviados, mantendo o .gitkeep."""
+    if not os.path.exists(PASTA_AULAS):
+        return
+    for nome in os.listdir(PASTA_AULAS):
+        if nome == ".gitkeep":
+            continue
+        caminho = os.path.join(PASTA_AULAS, nome)
+        if os.path.isfile(caminho):
+            os.remove(caminho)
+    print("🗑️  Arquivos em aulas_originais removidos.")
+
+
+def resetar_base() -> None:
+    """Limpa arquivos de chunks, índice e PDFs de origem."""
+    limpar_chunks()
+    limpar_indice()
+    limpar_aulas()
+    print("✅ Base de dados resetada.")
+
+
 def processar_todos():
     """
     Fluxo principal:
@@ -240,4 +280,14 @@ def processar_todos():
 
 
 if __name__ == "__main__":
-    processar_todos()
+    parser = argparse.ArgumentParser(description="Processa ou limpa a base de dados")
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Remove arquivos de chunks e índice para começar do zero",
+    )
+    args = parser.parse_args()
+    if args.reset:
+        resetar_base()
+    else:
+        processar_todos()
