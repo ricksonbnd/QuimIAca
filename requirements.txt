@@ -6,3 +6,4 @@ requests
 numpy
 hf_xet
 nltk
+tab-punkt
