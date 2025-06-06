@@ -35,6 +35,8 @@ A página do Gradio permite enviar uma pergunta. O script usa `gerar_resposta.py
 
 Há um menu suspenso **Personalidade** para escolher qual arquivo de template usar na resposta.
 
+Também é possível pressionar **Enter** no campo de pergunta para enviar a mensagem sem clicar no botão.
+
 Também há um botão "Resetar base" para apagar os arquivos processados e recomeçar do zero.
 
 ## Scripts auxiliares
