@@ -31,6 +31,8 @@ python chat_aluno.py
 
 A página do Gradio permite enviar uma pergunta. O script usa `gerar_resposta.py` para chamar um servidor compatível com a API OpenAI (ex.: LM Studio) que deve estar rodando em `http://localhost:1234`.
 
+Há um menu suspenso **Personalidade** para escolher qual arquivo de template usar na resposta.
+
 Também há um botão "Resetar base" para apagar os arquivos processados e recomeçar do zero.
 
 ## Scripts auxiliares
@@ -38,6 +40,8 @@ Também há um botão "Resetar base" para apagar os arquivos processados e recom
 - **base_consulta.py** – realiza a busca vetorial nos chunks usando FAISS.
 - **gerar_resposta.py** – monta o prompt a partir dos trechos encontrados e envia para o servidor de linguagem.
 - **dados/personalidades/** – contém um arquivo `.json` para cada personalidade de prompt.
+
+Na interface `chat_aluno.py` há um menu para escolher entre essas personalidades antes de enviar a pergunta.
 
 Para criar novas personalidades, adicione um JSON em `dados/personalidades` com a chave `"template"` contendo o texto do prompt. O nome do arquivo (sem extensão) é o identificador usado por `gerar_resposta.py`.
 
