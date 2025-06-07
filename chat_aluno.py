@@ -49,7 +49,7 @@ def interagir(pergunta, personalidade, opcao_trechos):
     historico.append(interacao)
 
     trecho_formatado = "\n\n".join(
-        [f"\u2022 {t[:100]}... \ud83d\udcc1 Origem: `{o[:50]}`" for t, o in zip(trechos, origens)]
+        [f"\u2022 {t[:100]}... \U0001F4C1 Origem: `{o[:50]}`" for t, o in zip(trechos, origens)]
     )
     return resposta, gr.update(
         value=trecho_formatado, visible=opcao_trechos == "Mostrar"
