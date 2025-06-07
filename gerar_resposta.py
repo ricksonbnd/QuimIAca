@@ -30,19 +30,21 @@ def montar_prompt(trechos, pergunta, personalidade: str = "colega_quimica") -> s
     return template.format(contexto=contexto, pergunta=pergunta).strip()
 
 
-def gerar_resposta(pergunta, modelo="lmstudio", k=3, personalidade: str = "colega_quimica"):
+def gerar_resposta(pergunta, modelo="lmstudio", k=3, personalidade: str = "colega_quimica", historico_chat=None):
     consulta = consultar_vetorial(pergunta, k=k)
     prompt = montar_prompt(consulta["trechos"], pergunta, personalidade)
+
+    mensagens = []
+    if historico_chat:
+        mensagens.extend(historico_chat[-10:])
+    mensagens.append({"role": "user", "content": prompt})
 
     resposta = requests.post(
         "http://localhost:1234/v1/chat/completions",
         headers={"Content-Type": "application/json"},
         json={
             "model": "local-model",  # Isso pode ser qualquer nome, LM Studio ignora
-            "messages": [
-                {"role": "system", "content": ""},
-                {"role": "user", "content": prompt}
-            ],
+            "messages": mensagens,
             "temperature": 0.7,
             "top_p": 0.9
         }
@@ -50,4 +52,5 @@ def gerar_resposta(pergunta, modelo="lmstudio", k=3, personalidade: str = "coleg
 
     resposta.raise_for_status()
 
-    return resposta.json()["choices"][0]["message"]["content"].strip()
+    conteudo = resposta.json()["choices"][0]["message"]["content"].strip()
+    return conteudo, consulta

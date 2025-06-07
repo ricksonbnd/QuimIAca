@@ -37,7 +37,9 @@ Há um menu suspenso **Personalidade** para escolher qual arquivo de template us
 
 Também é possível pressionar **Enter** no campo de pergunta para enviar a mensagem sem clicar no botão.
 
-Também há um botão "Resetar base" para apagar os arquivos processados e recomeçar do zero.
+Há também botões para **Salvar histórico**, **Carregar histórico** e **Limpar histórico**.
+O chat mantém no contexto apenas as 10 últimas mensagens trocadas com a IA.
+Existe ainda um botão "Resetar base" para apagar os arquivos processados e recomeçar do zero.
 
 Por padrão, os trechos do material usados na resposta ficam ocultos. O
 controle **Trechos** permite exibi‑los ou escondê‑los a qualquer momento, e a

@@ -3,7 +3,7 @@
 import os
 import shutil
 import gradio as gr
-from gerar_resposta import gerar_resposta
+from gerar_resposta import gerar_resposta, montar_prompt
 from base_consulta import consultar_vetorial
 from processar_aulas import processar_todos, resetar_base
 
@@ -12,6 +12,7 @@ PASTA_DESTINO = "dados/aulas_originais"
 os.makedirs(PASTA_DESTINO, exist_ok=True)
 
 historico = []
+mensagens_chat = []
 
 def listar_personalidades():
     """Retorna a lista de personalidades disponíveis (arquivos JSON na pasta)."""
@@ -24,10 +25,20 @@ PERSONALIDADES = listar_personalidades()
 PERSONALIDADE_PADRAO = "colega_quimica" if "colega_quimica" in PERSONALIDADES else (PERSONALIDADES[0] if PERSONALIDADES else "")
 
 def interagir(pergunta, personalidade, opcao_trechos):
-    resposta = gerar_resposta(pergunta, personalidade=personalidade)
-    consulta = consultar_vetorial(pergunta)
+    global mensagens_chat
+    resposta, consulta = gerar_resposta(
+        pergunta,
+        personalidade=personalidade,
+        historico_chat=mensagens_chat,
+    )
     trechos = consulta["trechos"]
     origens = consulta["origens"]
+
+    prompt_atual = montar_prompt(trechos, pergunta, personalidade)
+    mensagens_chat.append({"role": "user", "content": prompt_atual})
+    mensagens_chat.append({"role": "assistant", "content": resposta})
+    if len(mensagens_chat) > 10:
+        mensagens_chat = mensagens_chat[-10:]
 
     interacao = {
         "pergunta": pergunta,
@@ -37,10 +48,9 @@ def interagir(pergunta, personalidade, opcao_trechos):
     }
     historico.append(interacao)
 
-    trecho_formatado = "\n\n".join([
-        f"\u2022 {t[:100]}... 📁 Origem: `{o[:50]}`"
-        for t, o in zip(trechos, origens)
-    ])
+    trecho_formatado = "\n\n".join(
+        [f"\u2022 {t[:100]}... \ud83d\udcc1 Origem: `{o[:50]}`" for t, o in zip(trechos, origens)]
+    )
     return resposta, gr.update(
         value=trecho_formatado, visible=opcao_trechos == "Mostrar"
     )
@@ -51,20 +61,42 @@ def salvar_historico():
     pasta = "historico"
     os.makedirs(pasta, exist_ok=True)
     caminho = os.path.join(pasta, "interacoes.json")
-
-    historico_existente = []
-    if os.path.exists(caminho):
-        try:
-            with open(caminho, "r", encoding="utf-8") as f:
-                historico_existente = json.load(f)
-        except json.JSONDecodeError:
-            historico_existente = []
-
-    historico_existente.extend(historico)
-
     with open(caminho, "w", encoding="utf-8") as f:
-        json.dump(historico_existente, f, ensure_ascii=False, indent=2)
+        json.dump(historico, f, ensure_ascii=False, indent=2)
     return "Histórico salvo com sucesso!"
+
+def carregar_historico():
+    import json
+    global historico, mensagens_chat
+    pasta = "historico"
+    caminho = os.path.join(pasta, "interacoes.json")
+    if not os.path.exists(caminho):
+        historico = []
+        mensagens_chat = []
+        return "Nenhum histórico encontrado."
+    with open(caminho, "r", encoding="utf-8") as f:
+        historico = json.load(f)
+
+    mensagens_chat = []
+    for inter in historico:
+        trechos = inter.get("trechos_usados", [])
+        personalidade = inter.get("personalidade", PERSONALIDADE_PADRAO)
+        prompt = montar_prompt(trechos, inter.get("pergunta", ""), personalidade)
+        mensagens_chat.append({"role": "user", "content": prompt})
+        mensagens_chat.append({"role": "assistant", "content": inter.get("resposta", "")})
+    if len(mensagens_chat) > 10:
+        mensagens_chat = mensagens_chat[-10:]
+    return "Histórico carregado com sucesso!"
+
+def limpar_historico():
+    global historico, mensagens_chat
+    pasta = "historico"
+    caminho = os.path.join(pasta, "interacoes.json")
+    if os.path.exists(caminho):
+        os.remove(caminho)
+    historico = []
+    mensagens_chat = []
+    return "Histórico apagado."
 
 def salvar_arquivos(pdfs):
     nomes_salvos = []
@@ -81,6 +113,7 @@ def resetar_dados():
     return "✅ Base de dados resetada!"
 
 
+carregar_historico()
 
 
 with gr.Blocks() as demo:
@@ -112,6 +145,8 @@ with gr.Blocks() as demo:
 
     pergunta.submit(fn=interagir, inputs=[pergunta, personalidade, mostrar_trechos], outputs=[resposta, trechos_usados])
     gr.Button("Salvar histórico").click(fn=salvar_historico, outputs=status)
+    gr.Button("Carregar histórico").click(fn=carregar_historico, outputs=status)
+    gr.Button("Limpar histórico").click(fn=limpar_historico, outputs=status)
     gr.Button("Resetar base").click(fn=resetar_dados, outputs=status)
 
     ## função upar arquivos
